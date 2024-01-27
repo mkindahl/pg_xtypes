@@ -1,3 +1,9 @@
+SELECT '1 bytes'::bytes, '1 B'::bytes;
+ bytes  | bytes  
+--------+--------
+ 1.00 B | 1.00 B
+(1 row)
+
 SELECT '1 KiB'::bytes, '1 kB'::bytes;
   bytes  |  bytes  
 ---------+---------
@@ -34,43 +40,7 @@ SELECT '1 EiB'::bytes;
  1.00 EB
 (1 row)
 
-SELECT '1 KiB'::bigbytes, '1 kB'::bigbytes;
- bigbytes | bigbytes 
-----------+----------
- 1.00 kB  | 1.00 kB
-(1 row)
-
-SELECT '1.2 KiB'::bigbytes, '1.2 kB'::bigbytes;
- bigbytes | bigbytes 
-----------+----------
- 1.20 kB  | 1.20 kB
-(1 row)
-
-SELECT '2345 MiB'::bigbytes;
- bigbytes 
-----------
- 2.29 GB
-(1 row)
-
-SELECT '1 GiB'::bigbytes;
- bigbytes 
-----------
- 1.00 GB
-(1 row)
-
-SELECT '1 TiB'::bigbytes;
- bigbytes 
-----------
- 1.00 TB
-(1 row)
-
-SELECT '1 EiB'::bigbytes;
- bigbytes 
-----------
- 1.00 EB
-(1 row)
-
-create table sample(time timestamptz, size1 bytes, size2 bytes);
+create table sample(time timestamptz, size1b int8, size1 bytes, size2b int8, size2 bytes);
 select setseed(1.0);
  setseed 
 ---------
@@ -78,58 +48,81 @@ select setseed(1.0);
 (1 row)
 
 insert into sample
+with vals as (
+  select time, random() * 1024 as one, random() * 1024 * 1024 as two
+    from generate_series('2022-01-01 00:00:00'::timestamptz,
+    	 	         '2022-01-02 00:00:00'::timestamptz,
+			 '1 minute') as time)
 select time,
-       format('%s MiB', random() * 1024)::bytes,
-       format('%s kB', random() * 1024 * 1024)::bytes
-from generate_series('2022-01-01 00:00:00'::timestamptz, '2022-01-02 00:00:00'::timestamptz, '1 minute') as time;
+       one, format('%s MiB', one)::bytes, two, format('%s kB', two)::bytes
+from vals;
      
-select time, size1, size2, size1 + size2 from sample limit 5;
-             time             |   size1   |   size2   | ?column?  
-------------------------------+-----------+-----------+-----------
- Sat Jan 01 00:00:00 2022 PST | 407.43 MB | 761.73 MB | 1.14 GB
- Sat Jan 01 00:01:00 2022 PST | 396.81 MB | 420.66 MB | 817.47 MB
- Sat Jan 01 00:02:00 2022 PST | 565.71 MB | 539.73 MB | 1.08 GB
- Sat Jan 01 00:03:00 2022 PST | 63.21 MB  | 846.35 MB | 909.55 MB
- Sat Jan 01 00:04:00 2022 PST | 582.89 MB | 748.79 MB | 1.30 GB
-(5 rows)
+\x on
+select time,
+       size1, pg_size_pretty(1024 * 1024 * size1b),
+       size2, pg_size_pretty(1024 * size2b),
+       size1 + size2 as sum,
+       size1 - size2 as difference,
+       size1 / 2 as divided,
+       size1 * 2 as product1,
+       2 * size1 as product2
+  from sample
+ where size1 > size2
+ limit 5;
+-[ RECORD 1 ]--+-----------------------------
+time           | Sat Jan 01 00:02:00 2022 PST
+size1          | 565.71 MB
+pg_size_pretty | 566 MB
+size2          | 539.73 MB
+pg_size_pretty | 540 MB
+sum            | 1.08 GB
+difference     | 25.98 MB
+divided        | 282.86 MB
+product1       | 1.10 GB
+product2       | 1.10 GB
+-[ RECORD 2 ]--+-----------------------------
+time           | Sat Jan 01 00:06:00 2022 PST
+size1          | 770.04 MB
+pg_size_pretty | 770 MB
+size2          | 677.96 MB
+pg_size_pretty | 678 MB
+sum            | 1.41 GB
+difference     | 92.09 MB
+divided        | 385.02 MB
+product1       | 1.50 GB
+product2       | 1.50 GB
+-[ RECORD 3 ]--+-----------------------------
+time           | Sat Jan 01 00:10:00 2022 PST
+size1          | 295.93 MB
+pg_size_pretty | 296 MB
+size2          | 159.51 MB
+pg_size_pretty | 160 MB
+sum            | 455.44 MB
+difference     | 136.42 MB
+divided        | 147.96 MB
+product1       | 591.86 MB
+product2       | 591.86 MB
+-[ RECORD 4 ]--+-----------------------------
+time           | Sat Jan 01 00:13:00 2022 PST
+size1          | 211.86 MB
+pg_size_pretty | 212 MB
+size2          | 104.55 MB
+pg_size_pretty | 105 MB
+sum            | 316.41 MB
+difference     | 107.31 MB
+divided        | 105.93 MB
+product1       | 423.72 MB
+product2       | 423.72 MB
+-[ RECORD 5 ]--+-----------------------------
+time           | Sat Jan 01 00:15:00 2022 PST
+size1          | 917.07 MB
+pg_size_pretty | 917 MB
+size2          | 141.56 MB
+pg_size_pretty | 142 MB
+sum            | 1.03 GB
+difference     | 775.51 MB
+divided        | 458.54 MB
+product1       | 1.79 GB
+product2       | 1.79 GB
 
-select size1, size2, size1 - size2 from sample where size1 > size2 limit 5;
-   size1   |   size2   | ?column?  
------------+-----------+-----------
- 565.71 MB | 539.73 MB | 25.98 MB
- 770.04 MB | 677.96 MB | 92.09 MB
- 295.93 MB | 159.51 MB | 136.42 MB
- 211.86 MB | 104.55 MB | 107.31 MB
- 917.07 MB | 141.56 MB | 775.51 MB
-(5 rows)
-
-select size1, size1 / 2 from sample limit 5;
-   size1   | ?column?  
------------+-----------
- 407.43 MB | 203.72 MB
- 396.81 MB | 198.40 MB
- 565.71 MB | 282.86 MB
- 63.21 MB  | 31.60 MB
- 582.89 MB | 291.44 MB
-(5 rows)
-
-select size1, size1 * 2 from sample limit 5;
-   size1   | ?column?  
------------+-----------
- 407.43 MB | 814.87 MB
- 396.81 MB | 793.62 MB
- 565.71 MB | 1.10 GB
- 63.21 MB  | 126.41 MB
- 582.89 MB | 1.14 GB
-(5 rows)
-
-select size1, 2 * size1 from sample limit 5;
-   size1   | ?column?  
------------+-----------
- 407.43 MB | 814.87 MB
- 396.81 MB | 793.62 MB
- 565.71 MB | 1.10 GB
- 63.21 MB  | 126.41 MB
- 582.89 MB | 1.14 GB
-(5 rows)
-
+\x off

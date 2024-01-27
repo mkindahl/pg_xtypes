@@ -49,6 +49,7 @@ struct {
   enum Unit unit;
 } units[] = {
     UNIT_SUFFIX(B, BASE),
+    UNIT_SUFFIX(bytes, BASE),
     UNIT_SUFFIX(EiB, EXA),
     UNIT_SUFFIX(GB, GIGA),
     UNIT_SUFFIX(GiB, GIGA),
