@@ -1,5 +1,5 @@
 MODULE_big = xtypes
-OBJS = bytes.o
+OBJS = bytes.o uint8.o
 
 prog = perl -ne 'print "$$1" if /default_version = '\''(\d+\.\d+)'\''/' xtypes.control
 VERSION_xtypes = $(shell $(prog))
