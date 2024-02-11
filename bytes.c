@@ -50,6 +50,7 @@ struct {
 } units[] = {
     UNIT_SUFFIX(B, BASE),
     UNIT_SUFFIX(bytes, BASE),
+    UNIT_SUFFIX(EB, EXA),
     UNIT_SUFFIX(EiB, EXA),
     UNIT_SUFFIX(GB, GIGA),
     UNIT_SUFFIX(GiB, GIGA),

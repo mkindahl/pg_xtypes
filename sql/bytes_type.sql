@@ -1,10 +1,11 @@
-SELECT '1 bytes'::bytes, '1 B'::bytes;
-SELECT '1 KiB'::bytes, '1 kB'::bytes;
-SELECT '1.2 KiB'::bytes, '1.2 kB'::bytes;
-SELECT '2345 MiB'::bytes;
-SELECT '1 GiB'::bytes;
-SELECT '1 TiB'::bytes;
-SELECT '1 EiB'::bytes;
+-- Basic conversions should just work
+select '1 bytes'::bytes, '1 B'::bytes;
+select '1 KiB'::bytes, '1 kB'::bytes;
+select '1.2 KiB'::bytes, '1.2 kB'::bytes;
+select '2345 MiB'::bytes, '2345 MB'::bytes;
+select '1 GiB'::bytes, '1 GB'::bytes;
+select '1 TiB'::bytes, '1 TB'::bytes;
+select '1 EiB'::bytes, '1 EB'::bytes;
 
 create table sample(time timestamptz, size1b int8, size1 bytes, size2b int8, size2 bytes);
 

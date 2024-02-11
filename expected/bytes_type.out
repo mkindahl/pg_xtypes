@@ -1,43 +1,44 @@
-SELECT '1 bytes'::bytes, '1 B'::bytes;
+-- Basic conversions should just work
+select '1 bytes'::bytes, '1 B'::bytes;
  bytes  | bytes  
 --------+--------
  1.00 B | 1.00 B
 (1 row)
 
-SELECT '1 KiB'::bytes, '1 kB'::bytes;
+select '1 KiB'::bytes, '1 kB'::bytes;
   bytes  |  bytes  
 ---------+---------
  1.00 kB | 1.00 kB
 (1 row)
 
-SELECT '1.2 KiB'::bytes, '1.2 kB'::bytes;
+select '1.2 KiB'::bytes, '1.2 kB'::bytes;
   bytes  |  bytes  
 ---------+---------
  1.20 kB | 1.20 kB
 (1 row)
 
-SELECT '2345 MiB'::bytes;
-  bytes  
----------
- 2.29 GB
+select '2345 MiB'::bytes, '2345 MB'::bytes;
+  bytes  |  bytes  
+---------+---------
+ 2.29 GB | 2.29 GB
 (1 row)
 
-SELECT '1 GiB'::bytes;
-  bytes  
----------
- 1.00 GB
+select '1 GiB'::bytes, '1 GB'::bytes;
+  bytes  |  bytes  
+---------+---------
+ 1.00 GB | 1.00 GB
 (1 row)
 
-SELECT '1 TiB'::bytes;
-  bytes  
----------
- 1.00 TB
+select '1 TiB'::bytes, '1 TB'::bytes;
+  bytes  |  bytes  
+---------+---------
+ 1.00 TB | 1.00 TB
 (1 row)
 
-SELECT '1 EiB'::bytes;
-  bytes  
----------
- 1.00 EB
+select '1 EiB'::bytes, '1 EB'::bytes;
+  bytes  |  bytes  
+---------+---------
+ 1.00 EB | 1.00 EB
 (1 row)
 
 create table sample(time timestamptz, size1b int8, size1 bytes, size2b int8, size2 bytes);
