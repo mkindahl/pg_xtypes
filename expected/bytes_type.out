@@ -5,16 +5,16 @@ select '1 bytes'::bytes, '1 B'::bytes;
  1.00 B | 1.00 B
 (1 row)
 
-select '1 KiB'::bytes, '1 kB'::bytes;
+select '1 KiB'::bytes, '1 KB'::bytes;
   bytes  |  bytes  
 ---------+---------
- 1.00 kB | 1.00 kB
+ 1.00 KB | 1.00 KB
 (1 row)
 
-select '1.2 KiB'::bytes, '1.2 kB'::bytes;
+select '1.2 KiB'::bytes, '1.2 KB'::bytes;
   bytes  |  bytes  
 ---------+---------
- 1.20 kB | 1.20 kB
+ 1.20 KB | 1.20 KB
 (1 row)
 
 select '2345 MiB'::bytes, '2345 MB'::bytes;
@@ -41,89 +41,115 @@ select '1 EiB'::bytes, '1 EB'::bytes;
  1.00 EB | 1.00 EB
 (1 row)
 
-create table sample(time timestamptz, size1b int8, size1 bytes, size2b int8, size2 bytes);
+-- Boundary checks and syntax checks. 
+\set VERBOSITY terse
+\set ON_ERROR_STOP 0
+SELECT '543'::bytes;
+ERROR:  invalid input syntax for size type: "543" at character 8
+SELECT '1 AiB'::bytes;
+ERROR:  invalid input syntax for size type: "1 AiB" at character 8
+select '1234567890 TiB'::bytes;
+ERROR:  bytes value out of range at character 8
+select '16383 PiB'::bytes;
+  bytes   
+----------
+ 16.00 EB
+(1 row)
+
+select '16384 PiB'::bytes;
+ERROR:  bytes value out of range at character 8
+select '16 EiB'::bytes;
+ERROR:  bytes value out of range at character 8
+select '17 EiB'::bytes;
+ERROR:  bytes value out of range at character 8
+\set ON_ERROR_STOP 1
+create table sample(
+       size1n numeric,
+       size1b bytes,
+       size2n numeric,
+       size2b bytes
+);
 select setseed(1.0);
  setseed 
 ---------
  
 (1 row)
 
-insert into sample
-with vals as (
-  select time, random() * 1024 as one, random() * 1024 * 1024 as two
-    from generate_series('2022-01-01 00:00:00'::timestamptz,
-    	 	         '2022-01-02 00:00:00'::timestamptz,
-			 '1 minute') as time)
-select time,
-       one, format('%s MiB', one)::bytes, two, format('%s kB', two)::bytes
-from vals;
+insert into sample(size1n, size1b, size2n, size2b)
+select 1024.0 * 1024.0 * one,
+       format('%s MiB', one)::bytes,
+       1024.0 * two,
+       format('%s KB', two)::bytes
+from (select random() * 512 as one,
+             random() * 512 * 1024 as two
+        from generate_series(1,1000)) vals;
      
 \x on
-select time,
-       size1, pg_size_pretty(1024 * 1024 * size1b),
-       size2, pg_size_pretty(1024 * size2b),
-       size1 + size2 as sum,
-       size1 - size2 as difference,
-       size1 / 2 as divided,
-       size1 * 2 as product1,
-       2 * size1 as product2
+select size1b, pg_size_pretty(size1n),
+       size2b, pg_size_pretty(size2n),
+       size1b + size2b as sum,
+       pg_size_pretty(size1n + size2n) as pretty_sum,
+       size1b - size2b as difference,
+       size1b / 2 as divided,
+       size1b * 2 as product1,
+       2 * size1b as product2
   from sample
- where size1 > size2
+ where size1b > size2b
  limit 5;
--[ RECORD 1 ]--+-----------------------------
-time           | Sat Jan 01 00:02:00 2022 PST
-size1          | 565.71 MB
-pg_size_pretty | 566 MB
-size2          | 539.73 MB
-pg_size_pretty | 540 MB
-sum            | 1.08 GB
-difference     | 25.98 MB
-divided        | 282.86 MB
-product1       | 1.10 GB
-product2       | 1.10 GB
--[ RECORD 2 ]--+-----------------------------
-time           | Sat Jan 01 00:06:00 2022 PST
-size1          | 770.04 MB
-pg_size_pretty | 770 MB
-size2          | 677.96 MB
-pg_size_pretty | 678 MB
-sum            | 1.41 GB
-difference     | 92.09 MB
-divided        | 385.02 MB
-product1       | 1.50 GB
-product2       | 1.50 GB
--[ RECORD 3 ]--+-----------------------------
-time           | Sat Jan 01 00:10:00 2022 PST
-size1          | 295.93 MB
-pg_size_pretty | 296 MB
-size2          | 159.51 MB
-pg_size_pretty | 160 MB
-sum            | 455.44 MB
-difference     | 136.42 MB
-divided        | 147.96 MB
-product1       | 591.86 MB
-product2       | 591.86 MB
--[ RECORD 4 ]--+-----------------------------
-time           | Sat Jan 01 00:13:00 2022 PST
-size1          | 211.86 MB
-pg_size_pretty | 212 MB
-size2          | 104.55 MB
-pg_size_pretty | 105 MB
-sum            | 316.41 MB
-difference     | 107.31 MB
-divided        | 105.93 MB
-product1       | 423.72 MB
-product2       | 423.72 MB
--[ RECORD 5 ]--+-----------------------------
-time           | Sat Jan 01 00:15:00 2022 PST
-size1          | 917.07 MB
-pg_size_pretty | 917 MB
-size2          | 141.56 MB
-pg_size_pretty | 142 MB
-sum            | 1.03 GB
-difference     | 775.51 MB
-divided        | 458.54 MB
-product1       | 1.79 GB
-product2       | 1.79 GB
+-[ RECORD 1 ]--+----------
+size1b         | 282.86 MB
+pg_size_pretty | 283 MB
+size2b         | 269.87 MB
+pg_size_pretty | 270 MB
+sum            | 552.72 MB
+pretty_sum     | 553 MB
+difference     | 12.99 MB
+divided        | 141.43 MB
+product1       | 565.71 MB
+product2       | 565.71 MB
+-[ RECORD 2 ]--+----------
+size1b         | 385.02 MB
+pg_size_pretty | 385 MB
+size2b         | 338.98 MB
+pg_size_pretty | 339 MB
+sum            | 724.00 MB
+pretty_sum     | 724 MB
+difference     | 46.04 MB
+divided        | 192.51 MB
+product1       | 770.04 MB
+product2       | 770.04 MB
+-[ RECORD 3 ]--+----------
+size1b         | 147.96 MB
+pg_size_pretty | 148 MB
+size2b         | 79.76 MB
+pg_size_pretty | 80 MB
+sum            | 227.72 MB
+pretty_sum     | 228 MB
+difference     | 68.21 MB
+divided        | 73.98 MB
+product1       | 295.93 MB
+product2       | 295.93 MB
+-[ RECORD 4 ]--+----------
+size1b         | 105.93 MB
+pg_size_pretty | 106 MB
+size2b         | 52.28 MB
+pg_size_pretty | 52 MB
+sum            | 158.21 MB
+pretty_sum     | 158 MB
+difference     | 53.66 MB
+divided        | 52.97 MB
+product1       | 211.86 MB
+product2       | 211.86 MB
+-[ RECORD 5 ]--+----------
+size1b         | 458.54 MB
+pg_size_pretty | 459 MB
+size2b         | 70.78 MB
+pg_size_pretty | 71 MB
+sum            | 529.32 MB
+pretty_sum     | 529 MB
+difference     | 387.76 MB
+divided        | 229.27 MB
+product1       | 917.07 MB
+product2       | 917.07 MB
 
 \x off

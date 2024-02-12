@@ -17,7 +17,11 @@
 #include <postgres.h>
 #include <fmgr.h>
 
+#include <limits.h>
+#include <math.h>
 #include <stdio.h>
+
+#include "uint8.h"
 
 #include <utils/fmgrprotos.h>
 
@@ -42,7 +46,11 @@ enum Unit {
 #define UNIT_SUFFIX(S, U) \
   { .str = #S, .unit = UNIT_##U, .len = sizeof(#S), }
 
-/* Structure containing unit name, length, and enum. */
+/*
+ * Structure containing unit name, length, and enum. Note that we here
+ * use SI prefixes to denote base 2^10, not 10^3, so kB is 1024
+ * bytes. This is the same as pg_pretty_size uses.
+ */
 struct {
   const char* str;
   size_t len;
@@ -66,16 +74,15 @@ struct {
 };
 
 /*
- *  We use the same suffixes as pg_size_pretty() uses for the
- *  printout.
- *
- * This is not entirely correct since most disk vendors use kB to
- * denote 1000 bytes rather than 1024 bytes (and in a similar manner
- * for the other suffixes).
+ * We use the same suffixes as pg_size_pretty() uses for the
+ * printout. This is not entirely correct since most disk vendors use
+ * KB and MB to denote 1000 and 1000000 bytes rather than 1024 and
+ * 1024*1024 bytes respectively (and in a similar manner for the other
+ * suffixes).
  */
 const char* names[] = {
     [UNIT_BASE] = "B",
-    [UNIT_KILO] = "kB",
+    [UNIT_KILO] = "KB",
     [UNIT_MEGA] = "MB",
     [UNIT_GIGA] = "GB",
     [UNIT_TERA] = "TB",
@@ -88,12 +95,18 @@ Datum bytes_in(PG_FUNCTION_ARGS) {
   double num;
   char unit[16];
 
-  if (sscanf(str, "%lf %15s", &num, unit) != 2)
+  if (sscanf(str, "%lf%15s", &num, unit) != 2)
     goto error;
 
   for (int i = 0; i < sizeof(units) / sizeof(*units); ++i)
-    if (strncmp(units[i].str, unit, units[i].len) == 0)
-      PG_RETURN_UINT64(num * (1ULL << (10 * units[i].unit)));
+    if (strncmp(units[i].str, unit, units[i].len) == 0) {
+      double value = trunc(num * exp2(10 * units[i].unit));
+      if (value >= exp2(CHAR_BIT * sizeof(uint64)))
+        ereport(ERROR,
+                errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+                errmsg("bytes value out of range"));
+      PG_RETURN_UINT64(value);
+    }
 
 error:
   ereport(ERROR,
@@ -102,13 +115,13 @@ error:
 }
 
 Datum bytes_out(PG_FUNCTION_ARGS) {
-  const uint64 bytes = PG_GETARG_INT64(0);
+  const uint64 bytes = PG_GETARG_UINT64(0);
   enum Unit unit = 0;
   double repr = bytes;
 
   /* Reduce the precision until reducing it gives fractions on the
    * base type */
-  while (repr >= 1024.0) {
+  while (repr >= 1024.0 && unit + 1 < sizeof(names) / sizeof(*names)) {
     repr /= 1024.0;
     ++unit;
   }
@@ -129,9 +142,9 @@ Datum bytes_out(PG_FUNCTION_ARGS) {
 /*
  * Arithmetic functions for bytes type.
  */
-MAKE_FORWARD_FUNC(bytes_pl, int8pl, INT64);
-MAKE_FORWARD_FUNC(bytes_mi, int8mi, INT64);
-MAKE_FORWARD_FUNC(bytes_lt, int8lt, INT64);
-MAKE_FORWARD_FUNC(bytes_gt, int8gt, INT64);
-MAKE_FORWARD_FUNC(bytes_div, int8div, INT64);
-MAKE_FORWARD_FUNC(bytes_mul, int8mul, INT64);
+MAKE_FORWARD_FUNC(bytes_pl, uint8pl, UINT64);
+MAKE_FORWARD_FUNC(bytes_mi, uint8mi, UINT64);
+MAKE_FORWARD_FUNC(bytes_lt, uint8lt, UINT64);
+MAKE_FORWARD_FUNC(bytes_gt, uint8gt, UINT64);
+MAKE_FORWARD_FUNC(bytes_div, uint8div, UINT64);
+MAKE_FORWARD_FUNC(bytes_mul, uint8mul, UINT64);

@@ -1,36 +1,52 @@
 -- Basic conversions should just work
 select '1 bytes'::bytes, '1 B'::bytes;
-select '1 KiB'::bytes, '1 kB'::bytes;
-select '1.2 KiB'::bytes, '1.2 kB'::bytes;
+select '1 KiB'::bytes, '1 KB'::bytes;
+select '1.2 KiB'::bytes, '1.2 KB'::bytes;
 select '2345 MiB'::bytes, '2345 MB'::bytes;
 select '1 GiB'::bytes, '1 GB'::bytes;
 select '1 TiB'::bytes, '1 TB'::bytes;
 select '1 EiB'::bytes, '1 EB'::bytes;
 
-create table sample(time timestamptz, size1b int8, size1 bytes, size2b int8, size2 bytes);
+-- Boundary checks and syntax checks. 
+\set VERBOSITY terse
+\set ON_ERROR_STOP 0
+SELECT '543'::bytes;
+SELECT '1 AiB'::bytes;
+select '1234567890 TiB'::bytes;
+select '16383 PiB'::bytes;
+select '16384 PiB'::bytes;
+select '16 EiB'::bytes;
+select '17 EiB'::bytes;
+\set ON_ERROR_STOP 1
+
+create table sample(
+       size1n numeric,
+       size1b bytes,
+       size2n numeric,
+       size2b bytes
+);
 
 select setseed(1.0);
 
-insert into sample
-with vals as (
-  select time, random() * 1024 as one, random() * 1024 * 1024 as two
-    from generate_series('2022-01-01 00:00:00'::timestamptz,
-    	 	         '2022-01-02 00:00:00'::timestamptz,
-			 '1 minute') as time)
-select time,
-       one, format('%s MiB', one)::bytes, two, format('%s kB', two)::bytes
-from vals;
+insert into sample(size1n, size1b, size2n, size2b)
+select 1024.0 * 1024.0 * one,
+       format('%s MiB', one)::bytes,
+       1024.0 * two,
+       format('%s KB', two)::bytes
+from (select random() * 512 as one,
+             random() * 512 * 1024 as two
+        from generate_series(1,1000)) vals;
      
 \x on
-select time,
-       size1, pg_size_pretty(1024 * 1024 * size1b),
-       size2, pg_size_pretty(1024 * size2b),
-       size1 + size2 as sum,
-       size1 - size2 as difference,
-       size1 / 2 as divided,
-       size1 * 2 as product1,
-       2 * size1 as product2
+select size1b, pg_size_pretty(size1n),
+       size2b, pg_size_pretty(size2n),
+       size1b + size2b as sum,
+       pg_size_pretty(size1n + size2n) as pretty_sum,
+       size1b - size2b as difference,
+       size1b / 2 as divided,
+       size1b * 2 as product1,
+       2 * size1b as product2
   from sample
- where size1 > size2
+ where size1b > size2b
  limit 5;
 \x off
