@@ -1,44 +1,44 @@
 -- Basic conversions should just work
 select '1 bytes'::bytes, '1 B'::bytes;
- bytes  | bytes  
---------+--------
- 1.00 B | 1.00 B
+ bytes | bytes 
+-------+-------
+ 1 B   | 1 B
 (1 row)
 
 select '1 KiB'::bytes, '1 KB'::bytes;
-  bytes  |  bytes  
----------+---------
- 1.00 KB | 1.00 KB
+ bytes | bytes 
+-------+-------
+ 1 KB  | 1 KB
 (1 row)
 
 select '1.2 KiB'::bytes, '1.2 KB'::bytes;
-  bytes  |  bytes  
----------+---------
- 1.20 KB | 1.20 KB
+     bytes     |     bytes     
+---------------+---------------
+ 1.19921875 KB | 1.19921875 KB
 (1 row)
 
 select '2345 MiB'::bytes, '2345 MB'::bytes;
-  bytes  |  bytes  
----------+---------
- 2.29 GB | 2.29 GB
+      bytes      |      bytes      
+-----------------+-----------------
+ 2.2900390625 GB | 2.2900390625 GB
 (1 row)
 
 select '1 GiB'::bytes, '1 GB'::bytes;
-  bytes  |  bytes  
----------+---------
- 1.00 GB | 1.00 GB
+ bytes | bytes 
+-------+-------
+ 1 GB  | 1 GB
 (1 row)
 
 select '1 TiB'::bytes, '1 TB'::bytes;
-  bytes  |  bytes  
----------+---------
- 1.00 TB | 1.00 TB
+ bytes | bytes 
+-------+-------
+ 1 TB  | 1 TB
 (1 row)
 
 select '1 EiB'::bytes, '1 EB'::bytes;
-  bytes  |  bytes  
----------+---------
- 1.00 EB | 1.00 EB
+ bytes | bytes 
+-------+-------
+ 1 EB  | 1 EB
 (1 row)
 
 -- Boundary checks and syntax checks. 
@@ -51,9 +51,9 @@ ERROR:  invalid input syntax for size type: "1 AiB" at character 8
 select '1234567890 TiB'::bytes;
 ERROR:  bytes value out of range at character 8
 select '16383 PiB'::bytes;
-  bytes   
-----------
- 16.00 EB
+      bytes       
+------------------
+ 15.9990234375 EB
 (1 row)
 
 select '16384 PiB'::bytes;
@@ -85,71 +85,90 @@ from (select random() * 512 as one,
         from generate_series(1,1000)) vals;
      
 \x on
-select size1b, pg_size_pretty(size1n),
-       size2b, pg_size_pretty(size2n),
-       size1b + size2b as sum,
-       pg_size_pretty(size1n + size2n) as pretty_sum,
-       size1b - size2b as difference,
-       size1b / 2 as divided,
-       size1b * 2 as product1,
-       2 * size1b as product2
+select round(size1b), pg_size_pretty(size1n),
+       round(size2b), pg_size_pretty(size2n),
+       round(size1b + size2b), pg_size_pretty(size1n + size2n),
+       round(size1b - size2b), pg_size_pretty(size1n - size2n),
+       round(size1b / 2), pg_size_pretty(size1n / 2),
+       round(size1b * 2), pg_size_pretty(size1n * 2),
+       round(2 * size1b), pg_size_pretty(2 * size1n)
   from sample
  where size1b > size2b
  limit 5;
--[ RECORD 1 ]--+----------
-size1b         | 282.86 MB
+-[ RECORD 1 ]--+-------
+round          | 283 MB
 pg_size_pretty | 283 MB
-size2b         | 269.87 MB
+round          | 270 MB
 pg_size_pretty | 270 MB
-sum            | 552.72 MB
-pretty_sum     | 553 MB
-difference     | 12.99 MB
-divided        | 141.43 MB
-product1       | 565.71 MB
-product2       | 565.71 MB
--[ RECORD 2 ]--+----------
-size1b         | 385.02 MB
+round          | 553 MB
+pg_size_pretty | 553 MB
+round          | 13 MB
+pg_size_pretty | 13 MB
+round          | 141 MB
+pg_size_pretty | 141 MB
+round          | 566 MB
+pg_size_pretty | 566 MB
+round          | 566 MB
+pg_size_pretty | 566 MB
+-[ RECORD 2 ]--+-------
+round          | 385 MB
 pg_size_pretty | 385 MB
-size2b         | 338.98 MB
+round          | 339 MB
 pg_size_pretty | 339 MB
-sum            | 724.00 MB
-pretty_sum     | 724 MB
-difference     | 46.04 MB
-divided        | 192.51 MB
-product1       | 770.04 MB
-product2       | 770.04 MB
--[ RECORD 3 ]--+----------
-size1b         | 147.96 MB
+round          | 724 MB
+pg_size_pretty | 724 MB
+round          | 46 MB
+pg_size_pretty | 46 MB
+round          | 193 MB
+pg_size_pretty | 193 MB
+round          | 770 MB
+pg_size_pretty | 770 MB
+round          | 770 MB
+pg_size_pretty | 770 MB
+-[ RECORD 3 ]--+-------
+round          | 148 MB
 pg_size_pretty | 148 MB
-size2b         | 79.76 MB
+round          | 80 MB
 pg_size_pretty | 80 MB
-sum            | 227.72 MB
-pretty_sum     | 228 MB
-difference     | 68.21 MB
-divided        | 73.98 MB
-product1       | 295.93 MB
-product2       | 295.93 MB
--[ RECORD 4 ]--+----------
-size1b         | 105.93 MB
+round          | 228 MB
+pg_size_pretty | 228 MB
+round          | 68 MB
+pg_size_pretty | 68 MB
+round          | 74 MB
+pg_size_pretty | 74 MB
+round          | 296 MB
+pg_size_pretty | 296 MB
+round          | 296 MB
+pg_size_pretty | 296 MB
+-[ RECORD 4 ]--+-------
+round          | 106 MB
 pg_size_pretty | 106 MB
-size2b         | 52.28 MB
+round          | 52 MB
 pg_size_pretty | 52 MB
-sum            | 158.21 MB
-pretty_sum     | 158 MB
-difference     | 53.66 MB
-divided        | 52.97 MB
-product1       | 211.86 MB
-product2       | 211.86 MB
--[ RECORD 5 ]--+----------
-size1b         | 458.54 MB
+round          | 158 MB
+pg_size_pretty | 158 MB
+round          | 54 MB
+pg_size_pretty | 54 MB
+round          | 53 MB
+pg_size_pretty | 53 MB
+round          | 212 MB
+pg_size_pretty | 212 MB
+round          | 212 MB
+pg_size_pretty | 212 MB
+-[ RECORD 5 ]--+-------
+round          | 459 MB
 pg_size_pretty | 459 MB
-size2b         | 70.78 MB
+round          | 71 MB
 pg_size_pretty | 71 MB
-sum            | 529.32 MB
-pretty_sum     | 529 MB
-difference     | 387.76 MB
-divided        | 229.27 MB
-product1       | 917.07 MB
-product2       | 917.07 MB
+round          | 529 MB
+pg_size_pretty | 529 MB
+round          | 388 MB
+pg_size_pretty | 388 MB
+round          | 229 MB
+pg_size_pretty | 229 MB
+round          | 917 MB
+pg_size_pretty | 917 MB
+round          | 917 MB
+pg_size_pretty | 917 MB
 
 \x off

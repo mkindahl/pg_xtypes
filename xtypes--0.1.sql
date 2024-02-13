@@ -34,3 +34,6 @@ create operator >(leftarg = bytes, rightarg = bytes, function = bytes_gt, commut
 create operator /(leftarg = bytes, rightarg = int8, function = bytes_div);
 create operator *(leftarg = bytes, rightarg = int8, function = bytes_mul);
 create operator *(leftarg = int8, rightarg = bytes, function = bytes_mul);
+
+create function round(bytes) returns bytes
+as 'MODULE_PATHNAME', 'bytes_round' language c immutable strict;

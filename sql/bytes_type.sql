@@ -38,14 +38,13 @@ from (select random() * 512 as one,
         from generate_series(1,1000)) vals;
      
 \x on
-select size1b, pg_size_pretty(size1n),
-       size2b, pg_size_pretty(size2n),
-       size1b + size2b as sum,
-       pg_size_pretty(size1n + size2n) as pretty_sum,
-       size1b - size2b as difference,
-       size1b / 2 as divided,
-       size1b * 2 as product1,
-       2 * size1b as product2
+select round(size1b), pg_size_pretty(size1n),
+       round(size2b), pg_size_pretty(size2n),
+       round(size1b + size2b), pg_size_pretty(size1n + size2n),
+       round(size1b - size2b), pg_size_pretty(size1n - size2n),
+       round(size1b / 2), pg_size_pretty(size1n / 2),
+       round(size1b * 2), pg_size_pretty(size1n * 2),
+       round(2 * size1b), pg_size_pretty(2 * size1n)
   from sample
  where size1b > size2b
  limit 5;

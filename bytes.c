@@ -23,12 +23,14 @@
 
 #include "uint8.h"
 
+#include <common/shortest_dec.h>
 #include <utils/fmgrprotos.h>
 
 PG_MODULE_MAGIC;
 
 PG_FUNCTION_INFO_V1(bytes_in);
 PG_FUNCTION_INFO_V1(bytes_out);
+PG_FUNCTION_INFO_V1(bytes_round);
 
 /* Unit enum with value also being the power-of-two for the
    value. Note that the "UNIT_" prefix is used below. */
@@ -90,6 +92,34 @@ const char* names[] = {
     [UNIT_EXA] = "EB",
 };
 
+typedef struct Bytes {
+  double num;
+  enum Unit unit;
+} Bytes;
+
+static inline Bytes bytes_apply(Bytes val, double (*f)(double)) {
+  return (Bytes){
+      .num = (*f)(val.num),
+      .unit = val.unit,
+  };
+}
+
+static Bytes uint64_get_bytes(uint64 bytes) {
+  Bytes val = {.num = bytes};
+
+  /* Reduce the precision until reducing it gives fractions on the
+   * base type, or we run out of units */
+  while (val.num >= 1024.0 && val.unit + 1 < sizeof(names) / sizeof(*names)) {
+    val.num /= 1024.0;
+    ++val.unit;
+  }
+  return val;
+}
+
+static uint64 bytes_get_uint64(Bytes bytes) {
+  return trunc(bytes.num * exp2(10 * bytes.unit));
+}
+
 Datum bytes_in(PG_FUNCTION_ARGS) {
   char* str = PG_GETARG_CSTRING(0);
   double num;
@@ -114,18 +144,26 @@ error:
            errmsg("invalid input syntax for size type: \"%s\"", str)));
 }
 
+static void double_with_unit(const Bytes* bytes, char* result) {
+  const int index = double_to_shortest_decimal_bufn(bytes->num, result);
+  result[index] = ' ';
+  strcpy(&result[index + 1], names[bytes->unit]);
+}
+
 Datum bytes_out(PG_FUNCTION_ARGS) {
   const uint64 bytes = PG_GETARG_UINT64(0);
-  enum Unit unit = 0;
-  double repr = bytes;
+  char* ascii = palloc(DOUBLE_SHORTEST_DECIMAL_LEN + 1 + 5);
+  const Bytes val = uint64_get_bytes(bytes);
 
-  /* Reduce the precision until reducing it gives fractions on the
-   * base type */
-  while (repr >= 1024.0 && unit + 1 < sizeof(names) / sizeof(*names)) {
-    repr /= 1024.0;
-    ++unit;
-  }
-  PG_RETURN_CSTRING(psprintf("%.2lf %s", repr, names[unit]));
+  double_with_unit(&val, ascii);
+
+  PG_RETURN_CSTRING(ascii);
+}
+
+Datum bytes_round(PG_FUNCTION_ARGS) {
+  const uint64 bytes = PG_GETARG_UINT64(0);
+  const struct Bytes val = bytes_apply(uint64_get_bytes(bytes), round);
+  PG_RETURN_UINT64(bytes_get_uint64(val));
 }
 
 /*
